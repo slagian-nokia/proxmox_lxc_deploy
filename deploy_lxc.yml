@@ -10,7 +10,7 @@
 
   pre_tasks: # Add this section
     - name: Ensure community.proxmox collection is installed
-      ansible.builtin.command: ansible-galaxy collection install community.proxmox
+      ansible.builtin.command: /home/ansible/semaphore_ansible_env/bin/ansible-galaxy collection install community.proxmox
       delegate_to: localhost # Run this on the Semaphore Ansible controller itself
       run_once: true         # Only run this task once per playbook run
       ignore_errors: true    # Continue even if already installed or fails for other reasons (e.g., no internet access, permissions)
