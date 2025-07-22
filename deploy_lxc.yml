@@ -8,6 +8,14 @@
     - group_vars/all.yml
     - group_vars/creds.yml
 
+  pre_tasks: # Add this section
+    - name: Ensure community.proxmox collection is installed
+      ansible.builtin.command: ansible-galaxy collection install community.proxmox
+      delegate_to: localhost # Run this on the Semaphore Ansible controller itself
+      run_once: true         # Only run this task once per playbook run
+      ignore_errors: true    # Continue even if already installed or fails for other reasons (e.g., no internet access, permissions)
+
+
   tasks:
     # Task 1: Check if container config file exists on the Proxmox host
     - name: Check if LXC container config file exists for VMID {{ lxc_config.vmid }}
