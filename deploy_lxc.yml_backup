@@ -1,0 +1,46 @@
+---
+- name: Deploy LXC container on Proxmox VE
+  hosts: proxmox
+  gather_facts: no
+  collections:
+    - community.proxmox # This needs to be 'community.proxmox'
+
+  tasks:
+    - name: "Create LXC container \"{{ lxc_config.hostname }}\" (ID: {{ lxc_config.vmid }})"
+      community.proxmox.proxmox:
+        api_user: "{{ proxmox_api_user }}"
+        api_token_id: "{{ proxmox_api_token_id }}"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        api_host: "{{ proxmox_host }}"
+        vmid: "{{ lxc_config.vmid }}"
+        hostname: "{{ lxc_config.hostname }}"
+        node: "{{ lxc_config.node }}"
+        ostemplate: "{{ lxc_config.storage }}:vztmpl/{{ lxc_config.ostemplate }}"
+        storage: "{{ lxc_config.storage }}" # This 'storage' param is for template download location (if needed), not rootfs
+        password: "{{ lxc_config.password }}"
+        cores: "{{ lxc_config.cores }}"
+        memory: "{{ lxc_config.memory }}"
+        netif: '{"net0":"name=eth0,bridge={{ lxc_config.bridge }},ip=dhcp"}'
+        disk: "{{ lxc_config.storage }}:{{ lxc_config.rootfs_size }}"
+          # disk:
+          # - storage: "{{ lxc_config.storage }}"
+          #  size: "{{ lxc_config.rootfs_size }}"
+          #  type: "rootfs"
+          #disk:
+          # rootfs:
+          #   size: "{{ lxc_config.rootfs_size }}"
+          #  storage: "{{ lxc_config.storage }}"
+        state: present
+        timeout: 300
+        validate_certs: "{{ proxmox_validate_certs }}"
+
+    - name: "Start LXC container {{ lxc_config.hostname }} (ID: {{ lxc_config.vmid }})"
+      community.proxmox.proxmox:
+        api_user: "{{ proxmox_api_user }}"
+        api_token_id: "{{ proxmox_api_token_id }}"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        api_host: "{{ proxmox_host }}"
+        vmid: "{{ lxc_config.vmid }}"
+        node: "{{ lxc_config.node }}"
+        state: started
+      when: lxc_config.net_ip != 'dhcp'

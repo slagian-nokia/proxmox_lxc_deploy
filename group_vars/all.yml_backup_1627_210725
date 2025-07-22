@@ -1,0 +1,41 @@
+# Proxmox API credentials
+proxmox_host: "100.124.171.66" # e.g., "192.168.1.10" or "pve.example.com"
+proxmox_api_user: "ansible@pam"
+proxmox_api_token_id: "ansible-token"
+proxmox_api_token_secret: "811737d1-1895-40e5-ac92-bcf3a90d2d47" # <-- REPLACE THIS with your actual token secret!
+proxmox_validate_certs: false # Set to true if you have valid SSL certs, false for self-signed
+
+
+# LXC Container Configuration
+#lxc_config:
+#  vmid: 8005
+#  hostname: alpine-lxc
+#  ostemplate: alpine-3.20-default_20240908_amd64.tar.xz # Ensure this template exists on 'proxmox-shared-B1'
+#  storage: proxmox-shared-B1 # Proxmox storage pool name for rootfs and template
+#  rootfs_size: 5G # Root filesystem size for the LXC
+#  cores: 1
+#  memory: 256 # Memory in MB
+#  password: "Alcateldc" # <--- IMPORTANT: Replace with a strong password for the LXC's root user!
+#  bridge: vmbr0 # Proxmox bridge for networking
+#  net_ip: dhcp # Or use a static IP, e.g., "192.168.1.100/24" (requires gateway, nameserver)
+#  node: HP-A1-DL380 # Proxmox node hostname where the LXC will be created (must match Proxmox's internal name)
+#  # If using static IP, uncomment and configure these:
+#  # gateway: "192.168.1.1"
+#  # nameserver: "8.8.8.8"
+
+lxc_config:
+  vmid: 8005
+  hostname: alpine-lxc-static
+  ostemplate: alpine-3.20-default_20240908_amd64.tar.xz
+  storage: proxmox-shared-B1
+  rootfs_size: 5G
+  cores: 1
+  memory: 256
+  password: "Alcateldc"
+  bridge: vmbr0
+  net_ip: "100.124.171.168/23" # <-- Static IP address with CIDR mask
+  node: HP-A1-DL380
+  gateway: "100.124.170.1" # <-- Gateway for the container
+  nameserver: "10.171.0.1" # <-- Optional: DNS server for the container (e.g., Google DNS)
+  # You can add a second DNS server if needed:
+  nameserver2: "10.171.0.2"

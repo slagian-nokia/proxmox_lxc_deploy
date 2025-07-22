@@ -1,0 +1,77 @@
+---
+- name: Deploy LXC container on Proxmox VE
+  hosts: proxmox
+  gather_facts: no
+  collections:
+    - community.proxmox
+
+  tasks:
+    # Task 1: Check if container config file exists on the Proxmox host
+    - name: Check if LXC container config file exists for VMID {{ lxc_config.vmid }}
+      ansible.builtin.stat:
+        path: "/etc/pve/lxc/{{ lxc_config.vmid }}.conf"
+      register: lxc_config_file_status
+      delegate_to: "{{ inventory_hostname }}" # Ensure this runs on the Proxmox host itself
+
+    # Task 2: Create LXC container using pct command if it does not exist
+    - name: "Create LXC container \"{{ lxc_config.hostname }}\" (ID: {{ lxc_config.vmid }}) using pct"
+      ansible.builtin.command: >
+        pct create {{ lxc_config.vmid }}
+        {{ lxc_config.storage }}:vztmpl/{{ lxc_config.ostemplate }}
+        --hostname {{ lxc_config.hostname }}
+        --cores {{ lxc_config.cores }}
+        --memory {{ lxc_config.memory }}
+        --net0 "{{ 'name=eth0,bridge=' + lxc_config.bridge + (',ip=dhcp' if lxc_config.net_ip == 'dhcp' else ',ip=' + lxc_config.net_ip + ',gw=' + lxc_config.gateway) }}"
+        --rootfs {{ lxc_config.storage }}:{{ lxc_config.rootfs_size | replace('G','') }}
+        --password {{ lxc_config.password }}
+        --unprivileged 1
+        {% if lxc_config.nameserver is defined %}--nameserver {{ lxc_config.nameserver }}{% endif %}
+        {% if lxc_config.nameserver2 is defined %}--nameserver2 {{ lxc_config.nameserver2 }}{% endif %}
+      args:
+        # The 'creates' argument in command module ensures idempotency by checking file existence
+        creates: "/etc/pve/lxc/{{ lxc_config.vmid }}.conf"
+      when: not lxc_config_file_status.stat.exists # Run only if config file does NOT exist
+
+    # Task 3: Start LXC container (using community.proxmox.proxmox module)
+    - name: "Start LXC container {{ lxc_config.hostname }} (ID: {{ lxc_config.vmid }})"
+      community.proxmox.proxmox:
+        api_user: "{{ proxmox_api_user }}"
+        api_token_id: "{{ proxmox_api_token_id }}"
+        api_token_secret: "{{ proxmox_api_token_secret }}"
+        api_host: "{{ proxmox_host }}"
+        vmid: "{{ lxc_config.vmid }}"
+        node: "{{ lxc_config.node }}"
+        state: started
+
+    # Task 4: Wait for SSH to be available (important for next step)
+    - name: Wait for SSH on new LXC container (max 300 seconds)
+      ansible.builtin.wait_for:
+        host: "{{ (lxc_config.net_ip | split('/')[0]) if lxc_config.net_ip != 'dhcp' else lxc_config.hostname }}"
+        port: 22
+        timeout: 300
+        state: started
+      delegate_to: localhost
+      when: not lxc_config_file_status.stat.exists # Only wait if created
+
+    # Task 5: Configure static IP inside the LXC (only if net_ip is not dhcp)
+    - name: Configure static IP inside {{ lxc_config.hostname }}
+      ansible.builtin.shell: |
+        cat << EOF > /etc/network/interfaces
+        auto lo
+        iface lo inet loopback
+
+        auto eth0
+        iface eth0 inet static
+            address {{ lxc_config.net_ip }}
+            gateway {{ lxc_config.gateway }}
+            dns-nameservers {{ lxc_config.nameserver }}
+        EOF
+        ifup eth0 # Bring up the interface with new config
+      delegate_to: "{{ (lxc_config.net_ip | split('/')[0]) }}" # Execute on the container via its IP
+      become: true
+      vars:
+        ansible_user: root
+        ansible_password: "{{ lxc_config.password }}"
+        ansible_python_interpreter: /usr/bin/python3 # Common for modern Alpine
+      when: lxc_config.net_ip != 'dhcp' and not lxc_config_file_status.stat.exists # Run only if static IP and container just created
+      changed_when: true
