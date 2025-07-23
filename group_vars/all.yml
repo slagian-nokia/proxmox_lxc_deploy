@@ -2,60 +2,52 @@
 ---
 
 # LXC Container Configuration
-lxc_config:
-  vmid: 8006
-  hostname: alpinevm2 # Changed hostname to reflect multi-NIC setup
-    #ostemplate: alpine-3.20-default_20240908_amd64.tar.xz
-  ostemplate: vm-overlay-template-lxc.tar.zst
-  storage: proxmox-shared-B1
-  rootfs_size: 5G
-  cores: 1
-  memory: 256
-  password: "Alcateldc" # <--- IMPORTANT: Replace with a strong, secure password!
-  node: HP-A1-DL380
+# These variables will use the specified default values
+# if no higher-precedence variable (e.g., from Semaphore CLI args or Variable Group) is provided.
+vmid: "{{ vmid | default(8006) }}"
+hostname: "{{ hostname | default('demo-ct-overlay') }}"
+ostemplate: "{{ ostemplate | default('vm-overlay-template-lxc.tar.zst') }}"
+storage: "{{ storage | default('proxmox-shared-B1') }}"
+rootfs_size: "{{ rootfs_size | default('5G') }}"
+cores: "{{ cores | default(1) }}"
+memory: "{{ memory | default(256) }}"
+password: "{{ password | default('Alcateldc') }}" # <-- IMPORTANT: Change this for production!
+node: "{{ node | default('HP-A1-DL380') }}"
 
-  # Define a list of network interfaces for the container
-  network_interfaces:
-    - name: eth0 # First network interface
-      bridge: vmbr0 # Using bridge from your Proxmox HV config
-      ip: "100.124.171.169/23" # Static IP for eth0
-      gateway: "100.124.170.1" # Gateway for this network segment
-      nameserver: "10.171.0.1" # Primary DNS for the container (generally global, set by eth0)
-      nameserver2: "10.171.0.2" # Secondary DNS (will be combined with primary DNS)
-      # Uncomment and set extra_options if you need VLAN tags, specific MACs, etc.
-      # extra_options: "tag=410,hwaddr=00:11:22:33:44:01"
-      #
-    - name: eth1
-      bridge: br_pri # Using a third bridge from your Proxmox HV config
-      ip: "20.10.10.100/24" # Example static IP for this network
-      gateway: "20.10.10.1" # Gateway for this network segment
-
-    - name: eth2
-      bridge: br_pri # Using a third bridge from your Proxmox HV config
-      ip: "20.10.10.101/24" # Example static IP for this network
-      gateway: "20.10.10.1" # Gateway for this network segment
-
-    - name: eth3
-      bridge: br_ixr_410 # Using another bridge from your Proxmox HV config
-      ip: "40.10.10.100/24" # Example static IP for this network
-      gateway: "40.10.10.1"
-
-    - name: eth4
-      bridge: br_ixr_420 # Using another bridge from your Proxmox HV config
-      ip: "40.10.20.100/24" # Example static IP for this network
-      gateway: "40.10.20.1"
-      # DNS is typically set globally via the first interface, so not usually needed here.
-      # extra_options: "tag=420"
-
-    - name: eth5
-      bridge: br_ixr_510 # Using a third bridge from your Proxmox HV config
-      ip: "50.10.10.100/24" # Example static IP for this network
-      gateway: "50.10.10.1" # Gateway for this network segment
-      nameserver: "10.171.0.1" # Primary DNS for the container (generally global, set by eth0)
-      nameserver2: "10.171.0.2" # Secondary DNS (will be combined with primary DNS)
-
-    - name: eth6
-      bridge: br_ixr_520 #
-      ip: "50.10.20.1/24" # Example static IP for this network
-      gateway: "50.10.20.1" # Gateway for this network segment
-      nameserver: "10.171.0.1" # Primary DNS for the container (generally global, set by eth0)
+# Default network interfaces for the container.
+# If a 'network_interfaces' variable is provided from a higher precedence source
+# (like Semaphore CLI args or Variable Group), this entire list will be replaced.
+network_interfaces:
+  - name: eth0
+    bridge: vmbr0
+    ip: "100.124.171.169/23"
+    gateway: "100.124.170.1"
+    nameserver: "10.171.0.1"
+    nameserver2: "10.171.0.2"
+  - name: eth1
+    bridge: br_pri
+    ip: "20.10.10.100/24"
+    gateway: "20.10.10.1"
+  - name: eth2
+    bridge: br_pri
+    ip: "20.10.10.101/24"
+    gateway: "20.10.10.1"
+  - name: eth3
+    bridge: br_ixr_410
+    ip: "40.10.10.100/24"
+    gateway: "40.10.10.1"
+  - name: eth4
+    bridge: br_ixr_420
+    ip: "40.10.20.100/24"
+    gateway: "40.10.20.1"
+  - name: eth5
+    bridge: br_ixr_510
+    ip: "50.10.10.100/24"
+    gateway: "50.10.10.1"
+    nameserver: "10.171.0.1"
+    nameserver2: "10.171.0.2"
+  - name: eth6
+    bridge: br_ixr_520
+    ip: "50.10.20.1/24"
+    gateway: "50.10.20.1"
+    nameserver: "10.171.0.1"
