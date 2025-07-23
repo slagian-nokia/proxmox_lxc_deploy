@@ -1,0 +1,13 @@
+# group_vars/ctmeta.yml
+---
+
+# LXC Container Configuration
+# These variables will serve as the default values.
+# They will be overridden if a higher-precedence variable
+# (e.g., from Semaphore CLI args or a Semaphore Variable Group) is provided.
+# No need for | default() here, as this file itself defines the defaults.
+ostemplate: vm-overlay-template-lxc.tar.zst
+storage: proxmox-shared-B1
+rootfs_size: 5G
+password: Alcateldc # <-- IMPORTANT: Change this for production!
+

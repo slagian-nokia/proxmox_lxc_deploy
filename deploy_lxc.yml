@@ -8,6 +8,7 @@
   vars_files:
     - group_vars/all.yml # This provides the default 'lxc_config'
     - group_vars/creds.yml
+    - group_vars/ctmeta.yml
 
   vars: # <--- ADD THIS VARS SECTION
     # This variable will hold any lxc_config overrides coming from Semaphore.

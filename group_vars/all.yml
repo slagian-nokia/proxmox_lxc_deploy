@@ -8,12 +8,8 @@
 # No need for | default() here, as this file itself defines the defaults.
 vmid: 8006
 hostname: demo-ct-overlay
-ostemplate: vm-overlay-template-lxc.tar.zst
-storage: proxmox-shared-B1
-rootfs_size: 5G
 cores: 1
 memory: 256
-password: Alcateldc # <-- IMPORTANT: Change this for production!
 node: HP-A1-DL380
 
 # Default network interfaces for the container.
