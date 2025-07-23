@@ -2,21 +2,23 @@
 ---
 
 # LXC Container Configuration
-# These variables will use the specified default values
-# if no higher-precedence variable (e.g., from Semaphore CLI args or Variable Group) is provided.
-vmid: "{{ vmid | default(8006) }}"
-hostname: "{{ hostname | default('demo-ct-overlay') }}"
-ostemplate: "{{ ostemplate | default('vm-overlay-template-lxc.tar.zst') }}"
-storage: "{{ storage | default('proxmox-shared-B1') }}"
-rootfs_size: "{{ rootfs_size | default('5G') }}"
-cores: "{{ cores | default(1) }}"
-memory: "{{ memory | default(256) }}"
-password: "{{ password | default('Alcateldc') }}" # <-- IMPORTANT: Change this for production!
-node: "{{ node | default('HP-A1-DL380') }}"
+# These variables will serve as the default values.
+# They will be overridden if a higher-precedence variable
+# (e.g., from Semaphore CLI args or a Semaphore Variable Group) is provided.
+# No need for | default() here, as this file itself defines the defaults.
+vmid: 8006
+hostname: demo-ct-overlay
+ostemplate: vm-overlay-template-lxc.tar.zst
+storage: proxmox-shared-B1
+rootfs_size: 5G
+cores: 1
+memory: 256
+password: Alcateldc # <-- IMPORTANT: Change this for production!
+node: HP-A1-DL380
 
 # Default network interfaces for the container.
-# If a 'network_interfaces' variable is provided from a higher precedence source
-# (like Semaphore CLI args or Variable Group), this entire list will be replaced.
+# If a 'network_interfaces' variable is provided from a higher precedence source,
+# this entire list will be replaced.
 network_interfaces:
   - name: eth0
     bridge: vmbr0
