@@ -60,8 +60,8 @@
         api_token_secret: "{{ proxmox_api_token_secret }}"
         api_host: "{{ proxmox_host }}"
         vmid: "{{ lxc_config.vmid }}"
-      # node: "{{ lxc_config.node }}"
-        node: "{{ target_proxmox_host }}"
+        node: "{{ lxc_config.node }}"
+      #   node: "{{ target_proxmox_host }}"
         state: started
 
     # MODIFIED Task: Wait for LXC container to be ready for pct exec
