@@ -13,7 +13,6 @@ lxc_config:
   memory: 256
   password: "Alcateldc" # <--- IMPORTANT: Replace with a strong, secure password!
   node: HP-A1-DL380
-  password: Alcateldc # <-- IMPORTANT: Change this for production!
 
 
   # Define a list of network interfaces for the container
