@@ -1,7 +1,7 @@
 ---
 - name: Deploy LXC container on Proxmox VE
-  hosts: "{{ target_proxmox_host }}"
-    #hosts: proxmox
+  #  hosts: "{{ target_proxmox_host }}"
+  hosts: proxmox
   gather_facts: no
   collections:
     - community.proxmox

@@ -1,11 +1,6 @@
 # group_vars/all.yml
 ---
 # Proxmox API credentials
-proxmox_host: "100.124.171.66"
-proxmox_api_user: "ansible@pam"
-proxmox_api_token_id: "ansible-token"
-proxmox_api_token_secret: "811737d1-1895-40e5-ac92-bcf3a90d2d47" # <-- REPLACE THIS with your actual token secret!
-proxmox_validate_certs: false # Set to true if you have valid SSL certs, false for self-signed
 
 # LXC Container Configuration
 lxc_config:
