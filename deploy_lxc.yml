@@ -8,6 +8,9 @@
     - group_vars/all.yml
     - group_vars/creds.yml
 
+  environment: # <-- ADD THIS BLOCK
+    ANSIBLE_COLLECTIONS_PATHS: "/home/ansible/semaphore_ansible_env/lib/python3.12/site-packages/ansible_collections/community/proxmox"
+
   pre_tasks: # Add this section
     - name: Ensure community.proxmox collection is installed
       ansible.builtin.command: /home/ansible/semaphore_ansible_env/bin/ansible-galaxy collection install community.proxmox
