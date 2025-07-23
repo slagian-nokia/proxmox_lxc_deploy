@@ -1,4 +1,3 @@
-# /home/ansible/proxmox_lxc_deploy/deploy_lxc.yml
 ---
 - name: Deploy LXC container on Proxmox VE
   hosts: proxmox
@@ -6,44 +5,29 @@
   collections:
     - community.proxmox
   vars_files:
-    - group_vars/all.yml # This provides the default 'lxc_config'
+    - group_vars/all.yml
     - group_vars/creds.yml
-    - group_vars/ctmeta.yml
 
-  vars: # <--- ADD THIS VARS SECTION
-    # This variable will hold any lxc_config overrides coming from Semaphore.
-    # It defaults to an empty dictionary so 'combine' works even if no override is provided.
-    lxc_config_override: {}
+  environment: # <-- ADD THIS BLOCK
+    ANSIBLE_COLLECTIONS_PATHS: "/home/ansible/semaphore_ansible_env/lib/python3.12/site-packages/ansible_collections/community/proxmox"
 
-  environment:
-    ANSIBLE_COLLECTIONS_PATHS: "/home/ansible/semaphore_ansible_env/lib/python3.12/site-packages"
-
-  pre_tasks:
+  pre_tasks: # Add this section
     - name: Ensure community.proxmox collection is installed
       ansible.builtin.command: /home/ansible/semaphore_ansible_env/bin/ansible-galaxy collection install community.proxmox
-      delegate_to: localhost
-      run_once: true
-      ignore_errors: true
+      delegate_to: localhost # Run this on the Semaphore Ansible controller itself
+      run_once: true         # Only run this task once per playbook run
+      ignore_errors: true    # Continue even if already installed or fails for other reasons (e.g., no internet access, permissions)
+
 
   tasks:
-    # --- THIS IS THE CRUCIAL TASK FOR OPTIONAL OVERRIDES ---
-    - name: Combine default lxc_config with provided overrides
-      ansible.builtin.set_fact:
-        # 'lxc_config' on the left comes from group_vars/all.yml (lower precedence).
-        # 'lxc_config_override' on the right comes from Semaphore (higher precedence).
-        # recursive=True ensures nested dictionaries (like network_interfaces) are also merged.
-        # .default({}) is added to 'lxc_config' just in case all.yml doesn't define it for some reason,
-        # making the combine safe even in that edge case.
-        lxc_config: "{{ lxc_config | default({}) | combine(lxc_config_override, recursive=True) }}"
-      run_once: true # Ensures it runs only once per playbook run
-
-    # All subsequent tasks use {{ lxc_config.variable_name }}
+    # Task 1: Check if container config file exists on the Proxmox host
     - name: Check if LXC container config file exists for VMID {{ lxc_config.vmid }}
       ansible.builtin.stat:
         path: "/etc/pve/lxc/{{ lxc_config.vmid }}.conf"
       register: lxc_config_file_status
-      delegate_to: "{{ inventory_hostname }}"
+      delegate_to: "{{ inventory_hostname }}" # Ensure this runs on the Proxmox host itself
 
+    # Task 2: Create LXC container using pct command if it does not exist
     - name: "Create LXC container \"{{ lxc_config.hostname }}\" (ID: {{ lxc_config.vmid }}) using pct"
       ansible.builtin.command: >
         pct create {{ lxc_config.vmid }}
@@ -63,9 +47,11 @@
         --nameserver "{{ lxc_config.network_interfaces[0].nameserver }}{% if lxc_config.network_interfaces[0].nameserver2 is defined %},{{ lxc_config.network_interfaces[0].nameserver2 }}{% endif %}"
         {% endif %}
       args:
+        # The 'creates' argument in command module ensures idempotency by checking file existence
         creates: "/etc/pve/lxc/{{ lxc_config.vmid }}.conf"
-      when: not lxc_config_file_status.stat.exists
+      when: not lxc_config_file_status.stat.exists # Run only if config file does NOT exist
 
+    # Task 3: Start LXC container (using community.proxmox.proxmox module)
     - name: "Start LXC container {{ lxc_config.hostname }} (ID: {{ lxc_config.vmid }})"
       community.proxmox.proxmox:
         api_user: "{{ proxmox_api_user }}"
@@ -76,15 +62,17 @@
         node: "{{ lxc_config.node }}"
         state: started
 
+    # MODIFIED Task: Wait for LXC container to be ready for pct exec
     - name: Wait for LXC container to be ready for pct exec
-      ansible.builtin.command: "pct exec {{ lxc_config.vmid }} -- true"
-      register: pct_exec_check_result
+      ansible.builtin.command: "pct exec {{ lxc_config.vmid }} -- true" # Simple command that always succeeds if pct exec works
+      register: pct_exec_check_result # <--- ADD THIS LINE
       delegate_to: "{{ inventory_hostname }}"
       retries: 30
       delay: 5
-      until: pct_exec_check_result.rc == 0
-      when: not lxc_config_file_status.stat.exists
+      until: pct_exec_check_result.rc == 0 # <--- MODIFY THIS LINE
+      when: not lxc_config_file_status.stat.exists # Only run if container was just created
 
+    # MODIFIED Task: Install OpenSSH Server and iperf3 with proxy setup
     - name: Install OpenSSH Server and iperf3 with proxy in LXC container {{ lxc_config.vmid }}
       ansible.builtin.command: |
         pct exec {{ lxc_config.vmid }} -- sh -c '
@@ -93,24 +81,36 @@
         apk update
         apk add --no-cache openssh iperf3 tcpdump sudo
         '
-      delegate_to: "{{ inventory_hostname }}"
-      when: not lxc_config_file_status.stat.exists
+      delegate_to: "{{ inventory_hostname }}" # Run on the Proxmox host to exec into container
+      when: not lxc_config_file_status.stat.exists # Only run if container was just created
 
+    # MODIFIED Task: Start and enable OpenSSH service in LXC container {{ lxc_config.vmid }}
     - name: Enable and start OpenSSH service in LXC container {{ lxc_config.vmid }}
       ansible.builtin.command: |
         pct exec {{ lxc_config.vmid }} -- sh -c '
         rc-update add sshd default
         rc-service sshd start
         '
-      delegate_to: "{{ inventory_hostname }}"
-      when: not lxc_config_file_status.stat.exists
+      delegate_to: "{{ inventory_hostname }}" # Run on the Proxmox host to exec into container
+      when: not lxc_config_file_status.stat.exists # Only run if container was just created
 
+    # MODIFIED Task: Create user 'ouser' and grant sudo access using pct exec
     - name: Create user 'ouser' and grant sudo access using pct exec
       ansible.builtin.command:
-        cmd: "pct exec {{ lxc_config.vmid }} -- sh"
+        cmd: "pct exec {{ lxc_config.vmid }} -- sh" # Just execute sh, script will be piped via stdin
         stdin: |
+          # Add the user, creating home directory and setting shell
           adduser -D -g wheel -s /bin/ash ouser
+
+          # Set the password for the new user (using chpasswd)
           echo "ouser:Testtest1" | chpasswd
+
+          # Ensure sudoers configuration for wheel group is enabled (Alpine default usually has this)
+          # It's good practice to ensure the 'wheel' group has NOPASSWD for sudo if desired,
+          # or that the default sudoers file exists and is correctly configured.
+          # Alpine's /etc/sudoers usually contains an uncommented line for wheel group:
+          # %wheel ALL=(ALL) ALL
+          # You can ensure it's uncommented, but usually it is by default.
           grep -q "^%wheel ALL=(ALL) ALL" /etc/sudoers || echo "%wheel ALL=(ALL) ALL" >> /etc/sudoers
-      delegate_to: "{{ inventory_hostname }}"
-      when: not lxc_config_file_status.stat.exists
+      delegate_to: "{{ inventory_hostname }}" # Run on the Proxmox host
+      when: not lxc_config_file_status.stat.exists # Only run if container was just created
