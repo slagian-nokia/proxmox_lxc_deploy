@@ -1,7 +1,6 @@
 ---
 - name: Deploy LXC container on Proxmox VE
-  hosts: "{{ target_proxmox_host }}"
-    # hosts: proxmox
+  hosts: proxmox
   gather_facts: no
   collections:
     - community.proxmox
@@ -21,6 +20,10 @@
 
 
   tasks:
+    - name: Skip host if not matching target
+      ansible.builtin.meta: end_host
+      when: inventory_hostname != target_proxmox_host
+
     # Task 1: Check if container config file exists on the Proxmox host
     - name: Check if LXC container config file exists for VMID {{ lxc_config.vmid }}
       ansible.builtin.stat:
