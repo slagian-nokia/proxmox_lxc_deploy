@@ -66,7 +66,7 @@
         node: "{{ lxc_config.node }}"
       #   node: "{{ target_proxmox_host }}"
         state: started
-        when: lxc_config_file_status.stat.exists
+      when: lxc_config_file_status.stat.exists
 
     # MODIFIED Task: Wait for LXC container to be ready for pct exec
     - name: Wait for LXC container to be ready for pct exec
